@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Personal Goal Tracker</title>
+<style>
+:root{--bg:#0b1120;--panel:#15213a;--card:#202f4c;--line:#34445f;--blue:#60a5fa;--green:#22c55e;--red:#ef4444;--muted:#aabbd5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f1f5f9;font-family:Arial,sans-serif}
+header{padding:20px 5%;background:#111c32;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:22px;color:var(--blue);margin:0}
+main{max-width:1100px;margin:auto;padding:22px}
+section{background:var(--panel);border:1px solid #263653;border-radius:12px;padding:20px;margin-bottom:20px}
+h2{font-size:19px;margin:0 0 15px}
+h3{font-size:16px;margin:0 0 10px}
+button{background:#3b82f6;color:white;border:0;padding:10px 14px;border-radius:7px;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(1.12)}
+button.secondary{background:#475569}button.danger{background:#dc3545}button.success{background:#16834a}
+input,textarea,select{width:100%;padding:11px;margin:6px 0 12px;background:#0b1120;color:white;border:1px solid var(--line);border-radius:7px;font:inherit}
+textarea{min-height:70px;resize:vertical}
+label{font-size:13px;color:#cbd5e1}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin:18px 0}
+.stat{background:var(--card);padding:16px;border-radius:10px;color:var(--muted);font-size:13px}
+.stat strong{display:block;font-size:27px;color:var(--blue);margin-top:8px}
+.muted,.small{color:var(--muted)}.small{font-size:12px;line-height:1.8}
+.progress{height:9px;background:#334155;border-radius:10px;overflow:hidden;margin:10px 0}
+.progress div{height:100%;background:var(--green);width:0}
+.task{background:var(--card);border-radius:9px;padding:15px;margin:12px 0;border-left:4px solid var(--blue)}
+.task.done{border-color:var(--green)}.task.late{border-color:var(--red)}
+.task-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.badge{display:inline-block;background:#334155;border-radius:5px;padding:4px 7px;font-size:11px;margin:3px 3px 3px 0}
+.badge.red{background:#7f1d1d}.badge.green{background:#14532d}.badge.yellow{background:#713f12}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.actions button{font-size:12px;padding:8px 10px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center}
+.day{background:var(--card);padding:11px 2px;border-radius:5px;font-size:12px;min-height:42px}
+.day.today{outline:2px solid var(--blue)}.day.event{border:1px solid var(--green)}
+.calendar-nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.empty{text-align:center;color:var(--muted);padding:18px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+canvas{width:100%;height:190px;display:block}
+@media(max-width:550px){main{padding:12px}.grid{grid-template-columns:1fr}section{padding:15px}.day{padding:9px 1px;font-size:11px}}
+</style>
+</head>
+<body>
+<header><h1>🎯 My Personal Goal Tracker</h1><div id="clock" class="small"></div></header>
+<main>
+<section>
+<h2>My Dashboard</h2>
+<p class="muted">Plan your day. Track your goals. Achieve more.</p>
+<div class="stats">
+ <div class="stat">Total Tasks<strong id="total">0</strong></div>
+ <div class="stat">Completed<strong id="completed">0</strong></div>
+ <div class="stat">Pending<strong id="pending">0</strong></div>
+ <div class="stat">Overdue<strong id="overdue">0</strong></div>
+</div>
+<h3>Overall Progress</h3><div class="progress"><div id="overallBar"></div></div><strong id="overallText">0%</strong>
+</section>
+
+<section>
+<h2 id="formHeading">➕ Add a Goal or Task</h2>
+<form id="taskForm">
+<input type="hidden" id="editId">
+<label>Task / Goal name *</label><input id="name" required maxlength="120" placeholder="Example: Learn JavaScript">
+<label>Description</label><textarea id="description" placeholder="What do you want to achieve?"></textarea>
+<div class="grid">
+ <div><label>Category</label><select id="category"><option>Personal</option><option>Business</option><option>Study</option><option>Health</option><option>Work</option><option>Other</option></select></div>
+ <div><label>Priority</label><select id="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+ <div><label>Start date *</label><input type="date" id="startDate" required></div>
+ <div><label>Start time</label><input type="time" id="startTime"></div>
+ <div><label>Deadline date *</label><input type="date" id="deadlineDate" required></div>
+ <div><label>Deadline time *</label><input type="time" id="deadlineTime" required></div>
+ <div><label>Goal period</label><select id="period"><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Long Term</option></select></div>
+ <div><label>Progress (%)</label><input type="number" id="progressInput" min="0" max="100" value="0"></div>
+</div>
+<button type="submit" id="saveButton">Save Task</button>
+<button type="button" class="secondary" onclick="resetForm()">Clear</button>
+</form>
+</section>
+
+<section><h2>⏰ Upcoming Deadlines</h2><div id="deadlines"></div></section>
+
+<section>
+<h2>📋 My Tasks</h2>
+<div class="grid">
+ <div><label>Filter tasks</label><select id="filter" onchange="render()"><option>All</option><option>Pending</option><option>Completed</option><option>Overdue</option></select></div>
+ <div><label>Search</label><input id="search" placeholder="Search task..." oninput="render()"></div>
+</div>
+<div id="taskList"></div>
+</section>
+
+<section>
+<h2>📅 Monthly Calendar</h2>
+<div class="calendar-nav"><button class="secondary" onclick="changeMonth(-1)">← Previous</button><strong id="monthLabel"></strong><button class="secondary" onclick="changeMonth(1)">Next →</button></div>
+<div class="days" id="calendar"></div><div id="calendarInfo" class="small"></div>
+</section>
+
+<section><h2>📊 Progress Graph</h2><canvas id="graph" width="900" height="220"></canvas><div id="graphSummary" class="small"></div></section>
+
+<section><h2>🕒 Daily Schedule</h2><div id="schedule"></div></section>
+
+<section><h2>📈 Monthly Review</h2><div id="review"></div></section>
+
+<section><h2>📝 My Personal Rules</h2><textarea id="rules" placeholder="Write your personal rules, habits or reminders here..."></textarea><button onclick="saveRules()">Save My Rules</button><span id="rulesStatus" class="small"></span></section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let tasks=[];
+try{tasks=JSON.parse(localStorage.getItem("personalGoalTasks")||"[]");if(!Array.isArray(tasks))tasks=[]}catch(e){tasks=[]}
+let viewMonth=new Date().getMonth(),viewYear=new Date().getFullYear();
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const dateObj=(date,time)=>new Date(`${date}T${time||"23:59"}`);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isLate=t=>!t.done&&dateObj(t.deadlineDate,t.deadlineTime)<new Date();
+const remaining=t=>{let ms=dateObj(t.deadlineDate,t.deadlineTime)-new Date();if(ms<0)return "Deadline passed";let d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000);return `${d}d ${h}h ${m}m remaining`};
+function persist(){localStorage.setItem("personalGoalTasks",JSON.stringify(tasks));render()}
+function resetForm(){$("taskForm").reset();$("editId").value="";$("progressInput").value=0;$("formHeading").textContent="➕ Add a Goal or Task";$("saveButton").textContent="Save Task"}
+function render(){
+ const total=tasks.length,done=tasks.filter(t=>t.done).length,late=tasks.filter(isLate).length,pending=total-done;
+ $("total").textContent=total;$("completed").textContent=done;$("pending").textContent=pending;$("overdue").textContent=late;
+ const pct=total?Math.round(done/total*100):0;$("overallBar").style.width=pct+"%";$("overallText").textContent=pct+"% completed";
+ const upcoming=tasks.filter(t=>!t.done).sort((a,b)=>dateObj(a.deadlineDate,a.deadlineTime)-dateObj(b.deadlineDate,b.deadlineTime)).slice(0,5);
+ $("deadlines").innerHTML=upcoming.length?upcoming.map(t=>`<div class="task ${isLate(t)?"late":""}"><strong>${esc(t.name)}</strong><div class="small">Deadline: ${esc(t.deadlineDate)} at ${esc(t.deadlineTime)} · ${esc(remaining(t))}</div></div>`).join(""):'<div class="empty">No upcoming deadlines. Add a task above.</div>';
+ const filter=$("filter").value,query=$("search").value.trim().toLowerCase();
+ let shown=tasks.filter(t=>(filter==="All"||(filter==="Pending"&&!t.done&&!isLate(t))||(filter==="Completed"&&t.done)||(filter==="Overdue"&&isLate(t)))&&(`${t.name} ${t.description} ${t.category}`).toLowerCase().includes(query));
+ shown.sort((a,b)=>dateObj(a.deadlineDate,a.deadlineTime)-dateObj(b.deadlineDate,b.deadlineTime));
+ $("taskList").innerHTML=shown.length?shown.map(t=>`<article class="task ${t.done?"done":isLate(t)?"late":""}">
+ <div class="task-title"><h3>${esc(t.name)}</h3><span class="badge ${t.done?"green":isLate(t)?"red":"yellow"}">${t.done?"Completed":isLate(t)?"Overdue":"Pending"}</span></div>
+ <div class="small">${esc(t.description||"No description")}</div>
+ <span class="badge">${esc(t.category)}</span><span class="badge">${esc(t.priority)} priority</span><span class="badge">${esc(t.period)}</span>
+ <div class="small">Start: ${esc(t.startDate)} ${esc(t.startTime||"")}<br>Deadline: ${esc(t.deadlineDate)} ${esc(t.deadlineTime)}<br>${t.done?"Completed on: "+esc(t.completedAt||"") : esc(remaining(t))}</div>
+ <div class="progress"><div style="width:${Number(t.progress)||0}%"></div></div><div class="small">Progress: ${Number(t.progress)||0}%</div>
+ <div class="actions"><button class="success" onclick="toggleDone('${t.id}')">${t.done?"Reopen":"Mark Complete"}</button><button class="secondary" onclick="editTask('${t.id}')">Edit</button><button class="danger" onclick="deleteTask('${t.id}')">Delete</button></div>
+ </article>`).join(""):'<div class="empty">No tasks found.</div>';
+ renderCalendar();renderSchedule();renderReview();drawGraph();
+}
+$("taskForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const startDate=$("startDate").value,deadlineDate=$("deadlineDate").value,deadlineTime=$("deadlineTime").value;
+ if(dateObj(deadlineDate,deadlineTime)<dateObj(startDate,$("startTime").value||"00:00")){alert("Deadline must be after the start date and time.");return}
+ const id=$("editId").value||String(Date.now());
+ const old=tasks.find(t=>t.id===id);
+ const t={id,name:$("name").value.trim(),description:$("description").value.trim(),category:$("category").value,priority:$("priority").value,startDate,startTime:$("startTime").value,deadlineDate,deadlineTime,period:$("period").value,progress:Math.max(0,Math.min(100,Number($("progressInput").value)||0)),done:old?old.done:false,completedAt:old?old.completedAt:""};
+ if(!t.name)return;
+ if(t.done)t.progress=100;
+ if(old)tasks=tasks.map(x=>x.id===id?t:x);else tasks.push(t);
+ resetForm();persist();
+});
+function editTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;
+ ["name","description","category","priority","startDate","startTime","deadlineDate","deadlineTime","period"].forEach(k=>$(k).value=t[k]||"");
+ $("progressInput").value=t.progress||0;$("editId").value=id;$("formHeading").textContent="✏️ Edit Task";$("saveButton").textContent="Update Task";window.scrollTo({top:0,behavior:"smooth"});
+}
+function toggleDone(id){tasks=tasks.map(t=>t.id===id?{...t,done:!t.done,progress:!t.done?100:Math.min(t.progress,99),completedAt:!t.done?todayISO():""}:t);persist()}
+function deleteTask(id){if(confirm("Delete this task permanently?")){tasks=tasks.filter(t=>t.id!==id);persist()}}
+function changeMonth(n){viewMonth+=n;if(viewMonth<0){viewMonth=11;viewYear--}if(viewMonth>11){viewMonth=0;viewYear++}renderCalendar()}
+function renderCalendar(){
+ const first=new Date(viewYear,viewMonth,1),last=new Date(viewYear,viewMonth+1,0);
+ $("monthLabel").textContent=first.toLocaleString("en",{month:"long",year:"numeric"});
+ const names=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let out=names.map(x=>`<div class="small">${x}</div>`).join("");
+ for(let i=0;i<first.getDay();i++)out+='<div></div>';
+ for(let d=1;d<=last.getDate();d++){let iso=`${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=tasks.some(t=>t.deadlineDate===iso),today=iso===todayISO();out+=`<div class="day ${has?"event":""} ${today?"today":""}" title="${has?"Task deadline":""}">${d}${has?" •":""}</div>`}
+ $("calendar").innerHTML=out;
+ const monthTasks=tasks.filter(t=>t.deadlineDate.startsWith(`${viewYear}-${String(viewMonth+1).padStart(2,"0")}`));
+ $("calendarInfo").innerHTML=monthTasks.length?"<hr><strong>Deadlines this month</strong><br>"+monthTasks.map(t=>`${esc(t.deadlineDate)} — ${esc(t.name)} ${t.done?"(Completed)":""}`).join("<br>"):"<hr>No deadlines this month.";
+}
+function renderSchedule(){
+ const today=tasks.filter(t=>t.startDate===todayISO()).sort((a,b)=>(a.startTime||"").localeCompare(b.startTime||""));
+ $("schedule").innerHTML=today.length?today.map(t=>`<div class="task"><strong>${esc(t.startTime||"Time not set")} — ${esc(t.name)}</strong><div class="small">Deadline ${esc(t.deadlineDate)} ${esc(t.deadlineTime)}</div></div>`).join(""):'<div class="empty">No tasks scheduled to start today.</div>';
+}
+function renderReview(){
+ const prefix=`${viewYear}-${String(viewMonth+1).padStart(2,"0")}`;
+ const list=tasks.filter(t=>t.deadlineDate.startsWith(prefix)),done=list.filter(t=>t.done).length;
+ $("review").innerHTML=`<p>Month: <strong>${new Date(viewYear,viewMonth,1).toLocaleString("en",{month:"long",year:"numeric"})}</strong></p><p>Tasks due: <strong>${list.length}</strong></p><p>Completed: <strong>${done}</strong></p><p>Still open: <strong>${list.length-done}</strong></p>`;
+}
+function drawGraph(){
+ const c=$("graph"),ctx=c.getContext("2d"),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);
+ const done=tasks.filter(t=>t.done).length,pending=tasks.length-done,max=Math.max(tasks.length,1);
+ ctx.fillStyle="#60a5fa";ctx.fillRect(100,35,Math.max(0,done/max*600),35);
+ ctx.fillStyle="#f59e0b";ctx.fillRect(100,95,Math.max(0,pending/max*600),35);
+ ctx.fillStyle="#f1f5f9";ctx.font="16px Arial";ctx.fillText("Completed: "+done,10,58);ctx.fillText("Open: "+pending,10,118);
+ $("graphSummary").textContent=`${done} completed out of ${tasks.length} total tasks.`;
+}
+function saveRules(){localStorage.setItem("personalGoalRules",$("rules").value);$("rulesStatus").textContent=" Saved on this device."}
+$("rules").value=localStorage.getItem("personalGoalRules")||"";
+function tick(){$("clock").textContent=new Date().toLocaleString();render()}
+tick();setInterval(()=>{$("clock").textContent=new Date().toLocaleString();$("deadlines").innerHTML=$("deadlines").innerHTML;},60000);
+render();
+</script>
+</body>
+</html>
